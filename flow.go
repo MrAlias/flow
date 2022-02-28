@@ -13,5 +13,108 @@
 // limitations under the License.
 
 // Package flow provides an OpenTelemetry SpanProcessor that reports telemetry
-// flow.
+// flow as Prometheus metrics.
 package flow
+
+import (
+	"context"
+	"net/http"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/sdk/trace"
+)
+
+const (
+	startedState = "started"
+	endedState   = "ended"
+)
+
+type spanProcessor struct {
+	wrapped trace.SpanProcessor
+
+	idleConnsClosed chan struct{}
+	server          *http.Server
+	spanCounter     *prometheus.CounterVec
+}
+
+// Wrap returns a wrapped version of the downstream SpanProcessor with
+// telemetry flow reporting. All calls to the returned SpanProcessor will
+// introspected for telemetry data and then forwarded to downstream.
+func Wrap(downstream trace.SpanProcessor, options ...Option) trace.SpanProcessor {
+	c := newConfig(options)
+	sp := &spanProcessor{
+		wrapped:         downstream,
+		idleConnsClosed: make(chan struct{}),
+		server:          &http.Server{Addr: c.address},
+		spanCounter: promauto.NewCounterVec(prometheus.CounterOpts{
+			Name: "spans_total",
+			Help: "The total number of processed spans",
+		}, []string{"state"}),
+	}
+
+	http.Handle("/metrics", promhttp.Handler())
+
+	go func() {
+		switch err := sp.server.ListenAndServe(); err {
+		case nil, http.ErrServerClosed:
+		default:
+			otel.Handle(err)
+		}
+		close(sp.idleConnsClosed)
+	}()
+
+	return sp
+}
+
+// WithSpanProcessor returns an option that registers spanProcessor with a
+// TracerProvider after wrapping it to report telemetry flow metrics.
+func WithSpanProcessor(spanProcessor trace.SpanProcessor, options ...Option) trace.TracerProviderOption {
+	return trace.WithSpanProcessor(Wrap(spanProcessor, options...))
+}
+
+// OnStart is called when a span is started.
+func (sp *spanProcessor) OnStart(parent context.Context, s trace.ReadWriteSpan) {
+	sp.spanCounter.WithLabelValues(startedState).Inc()
+	sp.wrapped.OnStart(parent, s)
+}
+
+// OnEnd is called when span is finished.
+func (sp *spanProcessor) OnEnd(s trace.ReadOnlySpan) {
+	sp.spanCounter.WithLabelValues(endedState).Inc()
+	sp.wrapped.OnEnd(s)
+}
+
+// Shutdown is called when the SDK shuts down. The telemetry reporting process
+// will be halted when this is called.
+func (sp *spanProcessor) Shutdown(ctx context.Context) error {
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- sp.wrapped.Shutdown(ctx)
+	}()
+
+	err := sp.server.Shutdown(ctx)
+	select {
+	case <-ctx.Done():
+		// Abandon idle conns if context has expired.
+		if err == nil {
+			return ctx.Err()
+		}
+		return err
+	case <-sp.idleConnsClosed:
+	}
+
+	// Downstream honors ctx timeout, no need to include in select above.
+	if e := <-errCh; e != nil {
+		// Prioritize downstream error over server shutdown error.
+		err = e
+	}
+	return err
+}
+
+// ForceFlush forwards call to wrapped SpanProcessor.
+func (sp *spanProcessor) ForceFlush(ctx context.Context) error {
+	return sp.wrapped.ForceFlush(ctx)
+}

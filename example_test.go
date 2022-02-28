@@ -25,6 +25,28 @@ import (
 	"go.opentelemetry.io/otel/sdk/trace"
 )
 
+func Example() {
+	ctx := context.TODO()
+	sdk := trace.NewTracerProvider(flow.WithBatcher(exporter{}))
+	defer func() { _ = sdk.Shutdown(ctx) }()
+
+	_, span := sdk.Tracer("flow-example").Start(ctx, "example")
+	fmt.Println("started span")
+	printSpansTotal()
+
+	span.End()
+	fmt.Println("ended span")
+	printSpansTotal()
+
+	// Output:
+	// started span
+	// spans_total{state="started"} 1
+	// ended span
+	// spans_total{state="ended"} 1
+	// spans_total{state="started"} 1
+	// exported: example
+}
+
 type exporter struct{}
 
 func (e exporter) ExportSpans(_ context.Context, spans []trace.ReadOnlySpan) error {
@@ -54,26 +76,4 @@ func printSpansTotal() {
 			fmt.Println(string(line))
 		}
 	}
-}
-
-func Example() {
-	ctx := context.TODO()
-	sdk := trace.NewTracerProvider(flow.WithBatcher(exporter{}))
-	defer func() { _ = sdk.Shutdown(ctx) }()
-
-	_, span := sdk.Tracer("flow-example").Start(ctx, "example")
-	fmt.Println("started span")
-	printSpansTotal()
-
-	span.End()
-	fmt.Println("ended span")
-	printSpansTotal()
-
-	// Output:
-	// started span
-	// spans_total{state="started"} 1
-	// ended span
-	// spans_total{state="ended"} 1
-	// spans_total{state="started"} 1
-	// exported: example
 }

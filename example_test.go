@@ -22,7 +22,6 @@ import (
 	"strings"
 
 	"github.com/MrAlias/flow"
-	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
 )
 
@@ -59,10 +58,7 @@ func printSpansTotal() {
 
 func Example() {
 	ctx := context.TODO()
-	sdk := trace.NewTracerProvider(
-		trace.WithResource(resource.Empty()),
-		flow.WithSpanProcessor(trace.NewBatchSpanProcessor(exporter{})),
-	)
+	sdk := trace.NewTracerProvider(flow.WithBatcher(exporter{}))
 	defer func() { _ = sdk.Shutdown(ctx) }()
 
 	_, span := sdk.Tracer("flow-example").Start(ctx, "example")

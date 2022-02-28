@@ -75,6 +75,17 @@ func WithSpanProcessor(spanProcessor trace.SpanProcessor, options ...Option) tra
 	return trace.WithSpanProcessor(Wrap(spanProcessor, options...))
 }
 
+// WithBatcher returns an option that registers exporter using a
+// BatchSpanProcessor with a TracerProvider after wrapping it to report
+// telemetry flow metrics.
+//
+// If configuration of the flow span processor is needed, use
+// WithSpanProcessor or Wrap directly.
+func WithBatcher(exporter trace.SpanExporter, options ...trace.BatchSpanProcessorOption) trace.TracerProviderOption {
+	spanProcessor := trace.NewBatchSpanProcessor(exporter, options...)
+	return trace.WithSpanProcessor(Wrap(spanProcessor))
+}
+
 // OnStart is called when a span is started.
 func (sp *spanProcessor) OnStart(parent context.Context, s trace.ReadWriteSpan) {
 	sp.spanCounter.WithLabelValues(startedState).Inc()

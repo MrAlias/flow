@@ -57,7 +57,7 @@ func printSpansTotal() {
 	}
 }
 
-func ExampleWrap() {
+func Example() {
 	ctx := context.TODO()
 	sdk := trace.NewTracerProvider(
 		trace.WithResource(resource.Empty()),

@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/sdk/trace"
 )
 
@@ -47,10 +48,10 @@ func (r *recorder) ForceFlush(ctx context.Context) error {
 func TestDownstreamSpanProcessorCalled(t *testing.T) {
 	r := new(recorder)
 	sp := Wrap(r, WithListenAddress("localhost:0"))
-	sp.OnStart(nil, nil)
+	sp.OnStart(context.Background(), nil)
 	sp.OnEnd(nil)
-	sp.ForceFlush(nil)
-	sp.Shutdown(context.Background())
+	require.NoError(t, sp.ForceFlush(context.Background()))
+	require.NoError(t, sp.Shutdown(context.Background()))
 
 	assert.Equal(t, 1, r.onStartN, "wrong number of calls to OnStart")
 	assert.Equal(t, 1, r.onEndN, "wrong number of calls to OnEnd")

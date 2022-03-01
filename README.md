@@ -1,8 +1,8 @@
 # flow
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/MrAlias/flow.svg)](https://pkg.go.dev/github.com/MrAlias/flow)
+
 An OpenTelemetry [`SpanProcessor`] reporting tracing flow metrics.
-
-
 
 ## Getting Started
 

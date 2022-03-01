@@ -25,6 +25,17 @@ import (
 	"go.opentelemetry.io/otel/sdk/trace"
 )
 
+func ExampleWithBatcher() {
+	sdk := trace.NewTracerProvider(flow.WithBatcher(exporter{}))
+	defer func() { _ = sdk.Shutdown(context.Background()) }()
+}
+
+func ExampleWithSpanProcessor() {
+	spanProcessor := trace.NewSimpleSpanProcessor(exporter{})
+	sdk := trace.NewTracerProvider(flow.WithSpanProcessor(spanProcessor))
+	defer func() { _ = sdk.Shutdown(context.Background()) }()
+}
+
 func Example() {
 	ctx := context.TODO()
 	sdk := trace.NewTracerProvider(flow.WithBatcher(exporter{}))

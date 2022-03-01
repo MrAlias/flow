@@ -1,0 +1,37 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+  prometheus:
+    config:
+      global:
+        scrape_interval: 5s
+        scrape_timeout: 2s
+      scrape_configs:
+      - job_name: fib
+        static_configs:
+        - targets:
+          - 'fib:41820'
+
+exporters:
+  prometheus:
+    endpoint: "0.0.0.0:8889"
+  jaeger:
+    endpoint: jaeger:14250
+    tls:
+      insecure: true
+  logging:
+
+processors:
+  batch:
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      exporters: [jaeger, logging]
+      processors: [batch]
+    metrics:
+      receivers: [prometheus]
+      processors: [batch]
+      exporters: [logging, prometheus]

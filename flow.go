@@ -14,6 +14,18 @@
 
 // Package flow provides an OpenTelemetry SpanProcessor that reports telemetry
 // flow as Prometheus metrics.
+//
+// To start using, replace the TracerProviderOption from the default
+// OpenTelemetry SDK with the ones provided here. For example:
+//   sdk := trace.NewTracerProvider(trace.WithBatcher(exporter{}))
+//
+// Can be replaced with:
+//   sdk := trace.NewTracerProvider(flow.WithBatcher(exporter{}))
+//
+// Additionally, any custom span processor can be wrapped into a
+// TracerProviderOption. For example:
+//   spanProcessor := trace.NewSimpleSpanProcessor(exporter{})
+//   sdk := trace.NewTracerProvider(flow.WithSpanProcessor(spanProcessor))
 package flow
 
 import (

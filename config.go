@@ -40,6 +40,7 @@ func newConfig(options []Option) config {
 	return c
 }
 
+// Option configures the flow SpanProcessor.
 type Option interface {
 	apply(config) config
 }
@@ -51,7 +52,7 @@ func (o addressOpt) apply(c config) config {
 	return c
 }
 
-// WithListenAddresss sets the listen address of the HTTP server.
+// WithListenAddress sets the listen address of the HTTP server.
 func WithListenAddress(addr string) Option {
 	return addressOpt(addr)
 }

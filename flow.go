@@ -21,7 +21,6 @@ import (
 	"net/http"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/sdk/trace"
@@ -44,18 +43,24 @@ type spanProcessor struct {
 // telemetry flow reporting. All calls to the returned SpanProcessor will
 // introspected for telemetry data and then forwarded to downstream.
 func Wrap(downstream trace.SpanProcessor, options ...Option) trace.SpanProcessor {
+	mux := http.NewServeMux()
+	registry := prometheus.NewRegistry()
+	mux.Handle("/metrics", promhttp.InstrumentMetricHandler(
+		registry,
+		promhttp.HandlerFor(registry, promhttp.HandlerOpts{}),
+	))
+
 	c := newConfig(options)
 	sp := &spanProcessor{
 		wrapped:         downstream,
 		idleConnsClosed: make(chan struct{}),
-		server:          &http.Server{Addr: c.address},
-		spanCounter: promauto.NewCounterVec(prometheus.CounterOpts{
+		server:          &http.Server{Addr: c.address, Handler: mux},
+		spanCounter: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Name: "spans_total",
 			Help: "The total number of processed spans",
 		}, []string{"state"}),
 	}
-
-	http.Handle("/metrics", promhttp.Handler())
+	registry.MustRegister(sp.spanCounter)
 
 	go func() {
 		switch err := sp.server.ListenAndServe(); err {

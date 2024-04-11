@@ -1,4 +1,4 @@
-FROM golang:1.19-alpine
+FROM golang:1.22-alpine
 COPY . /go/src/github.com/MrAlias/flow/
 WORKDIR /go/src/github.com/MrAlias/flow/example
 RUN go install .

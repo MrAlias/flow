@@ -16,4 +16,4 @@ jobs:
           cache-dependency-path: "**/go.sum"
       - uses: actions/checkout@v4
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v4.0.0
+        uses: golangci/golangci-lint-action@v5.0.0
